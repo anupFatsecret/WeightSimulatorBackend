@@ -11,6 +11,87 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }
 });
 
+// Image models don't turn bare kg numbers into a body change,
+// so spell out how big the change is and what it looks like.
+function bmiFor(weightKg, heightCm) {
+  const metres = heightCm / 100;
+  return weightKg / (metres * metres);
+}
+
+function bodyCategory(bmi) {
+  if (bmi < 18.5) return "underweight";
+  if (bmi < 25) return "a healthy weight";
+  if (bmi < 30) return "overweight";
+  if (bmi < 35) return "obese, class I";
+  if (bmi < 40) return "obese, class II";
+  return "obese, class III";
+}
+
+// What the body should look like at the target BMI.
+function bodyDescription(bmi) {
+  if (bmi < 21) {
+    return "a slim, lean build: flat stomach, narrow waist, " +
+      "clearly defined jawline and cheekbones, slim neck, " +
+      "slim arms and legs with little visible fat";
+  }
+  if (bmi < 25) {
+    return "a trim, normal build: flat or nearly flat stomach, " +
+      "visible waist, defined jawline, slimmer face and neck, " +
+      "toned arms and thighs";
+  }
+  if (bmi < 30) {
+    return "a solid build with some belly fat, a slightly fuller " +
+      "face, a softer jawline and slightly soft arms and thighs";
+  }
+  if (bmi < 35) {
+    return "a heavy build that is visibly smaller than in the " +
+      "photo: a smaller rounded belly, a less full face, a " +
+      "slightly slimmer neck, and lighter arms and thighs";
+  }
+  return "a large, soft build with a rounded belly, full face " +
+    "and cheeks, thick neck, and heavy arms and thighs";
+}
+
+// How visible the change should be, from the share of body weight lost.
+function changeSize(percentLost) {
+  if (percentLost < 8) return "subtle";
+  if (percentLost < 20) return "clearly noticeable";
+  if (percentLost < 35) return "dramatic";
+  return "very dramatic";
+}
+
+function buildPrompt(current, height, target) {
+  const currentBmi = bmiFor(current, height);
+  const targetBmi = bmiFor(target, height);
+  const lost = current - target;
+  const percentLost = (lost / current) * 100;
+
+  return `
+    Edit this photograph to show the same adult
+    at a lower body weight.
+
+    Now: ${current} kg, ${height} cm tall,
+    BMI ${currentBmi.toFixed(1)} (${bodyCategory(currentBmi)}).
+    Target: ${target} kg, BMI ${targetBmi.toFixed(1)}
+    (${bodyCategory(targetBmi)}) — ${lost.toFixed(1)} kg lighter,
+    ${percentLost.toFixed(0)}% of their body weight.
+
+    This is a ${changeSize(percentLost)} change.
+    The person in the result should have
+    ${bodyDescription(targetBmi)}.
+
+    Show the weight loss everywhere fat is carried:
+    face and jawline, neck, chest, belly and waist,
+    hips, arms and thighs. The same clothes should
+    fit looser on the smaller body.
+
+    Keep the same facial identity, hairstyle, skin
+    tone, clothing items, pose, camera angle,
+    lighting and background. Do not change their
+    height or apparent age. Keep it photorealistic.
+  `;
+}
+
 // Simple test endpoint
 app.get("/", (req, res) => {
   res.send("Weight Simulation Backend is running!");
@@ -49,21 +130,7 @@ app.post(
         return res.status(400).send("Unsupported image format");
       }
 
-      const prompt = `
-        Edit this photograph to show the same adult
-        person at a reduced body weight.
-
-        Current weight: ${current} kg
-        Height: ${height} cm
-        Target weight: ${target} kg
-
-        Create a realistic visual approximation of
-        how the person might look at the target weight.
-
-        Preserve facial identity, hairstyle, clothing,
-        pose, lighting and background.
-        Keep natural body proportions.
-      `;
+      const prompt = buildPrompt(current, height, target);
 
       const form = new FormData();
 
