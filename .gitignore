@@ -1,0 +1,11 @@
+# Dependencies
+node_modules/
+
+# Environment variables and API keys
+.env
+
+# Generated images
+result.png
+
+# macOS files
+.DS_Store
