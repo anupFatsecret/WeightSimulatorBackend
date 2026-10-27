@@ -60,6 +60,20 @@ function changeSize(percentLost) {
   return "very dramatic";
 }
 
+// A little more muscle tone the more weight is lost; never a bodybuilder look.
+function muscleTone(percentLost) {
+  if (percentLost < 8) {
+    return "slightly firmer shoulders and arms";
+  }
+  if (percentLost < 20) {
+    return "a little more definition in the shoulders, " +
+      "arms and chest";
+  }
+  return "visible but natural muscle tone in the " +
+    "shoulders, arms, chest and legs, like someone " +
+    "who exercises regularly";
+}
+
 function buildPrompt(current, height, target) {
   const currentBmi = bmiFor(current, height);
   const targetBmi = bmiFor(target, height);
@@ -84,6 +98,10 @@ function buildPrompt(current, height, target) {
     face and jawline, neck, chest, belly and waist,
     hips, arms and thighs. The same clothes should
     fit looser on the smaller body.
+
+    As they lose weight they should also look slightly
+    more muscular: ${muscleTone(percentLost)}.
+    Keep it subtle and natural, not a bodybuilder.
 
     Keep the same facial identity, hairstyle, skin
     tone, clothing items, pose, camera angle,
